@@ -39,13 +39,16 @@ cd /path/to/this/folder
 git config user.name  "Your Name"            # once per machine, skip if set
 git config user.email "you@example.com"
 git init
+git branch -M main                           # call the branch main, not master
 git add .
 git commit -m "parsi-go 1.1.0 — source, docs, tests, screenshots"
-gh repo create offline-persian-tts-win7 --public --source . --push
+gh repo create parsi-go-win7 --public --source . --push
+#  ^ pick any free name: your account already has offline-persian-tts-win7
 ```
 
 `gh repo create … --source . --push` creates the repository **and** pushes
-`main` in one step. Result: `https://github.com/USER/offline-persian-tts-win7`.
+`main` in one step. Result: `https://github.com/USER/parsi-go-win7` (or
+whatever name you chose).
 
 ### Option B — reuse the existing repository
 
@@ -110,6 +113,11 @@ python3 scripts/test_protocol.py 127.0.0.1 8123   # 12/12 keep-alive/stress
 
 All three must be green; their expected scores are listed in
 [`CHANGELOG.md`](CHANGELOG.md#test-gates-at-this-release).
+
+> The gates need your **full working tree** — `deps/` (ONNX Runtime +
+> sentencepiece), the model weights and `ref/` — see
+> [`docs/win7.md`](docs/win7.md). A fresh clone builds the executables, but
+> runs the gates only after the model is in place (HuggingFace or step 4).
 
 ## 4. Create the releases (executables + model)
 
