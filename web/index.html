@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>پارسی‌گو — تبدیل متن به گفتار</title>
+<style>
+/* ---- font (bundled next to this file; the machine is offline) ------------ */
+@font-face { font-family: Sahel; src: url('/sahel.ttf') format('truetype'); font-weight: normal; font-display: swap; }
+
+/* ---- theme --------------------------------------------------------------- */
+:root {
+  --bg:#0f1115; --panel:#161a21; --panel2:#12161d; --field:#0c0e13;
+  --fg:#e7e9ee; --muted:#9aa1b1; --accent:#5b8cff; --accent2:#8aa7ff;
+  --border:#262c37; --ok:#4fd18b; --err:#ff8080; --warn:#f5c451;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0; background:var(--bg); color:var(--fg); padding-bottom:56px;
+  font-family:Sahel, Tahoma, "Segoe UI", sans-serif; font-size:15px; line-height:1.75;
+}
+h1 { margin:0; font-size:19px; font-weight:normal; }
+h2 { margin:0; font-size:16px; font-weight:normal; }
+h3 { margin:14px 0 6px; font-size:14px; color:var(--muted); font-weight:normal; }
+
+/* ---- top bar ------------------------------------------------------------- */
+.topbar {
+  position:sticky; top:0; z-index:10; display:flex; align-items:center;
+  justify-content:space-between; flex-wrap:wrap; gap:10px;
+  padding:11px 18px; background:#141821; border-bottom:1px solid var(--border);
+}
+.brand { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.brand .sub { color:var(--muted); font-size:12.5px; }
+.top-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.chip {
+  display:inline-flex; align-items:center; background:#1a1f28; border:1px solid var(--border);
+  border-radius:999px; padding:4px 12px; font-size:13px; color:var(--muted); white-space:nowrap;
+}
+.dot { width:9px; height:9px; border-radius:50%; background:#888; margin-right:7px; display:inline-block; }
+.dot.on   { background:var(--ok); box-shadow:0 0 7px var(--ok); }
+.dot.wait { background:var(--warn); animation:pulse 1.2s ease-in-out infinite; }
+.dot.off  { background:var(--err); }
+@keyframes pulse { 50% { opacity:.3; } }
+
+/* ---- tabs ---------------------------------------------------------------- */
+.tabs { max-width:1000px; margin:0 auto; padding:12px 18px 0; display:flex; gap:6px; flex-wrap:wrap; }
+.tab {
+  background:transparent; color:var(--muted); border:1px solid transparent;
+  border-radius:10px 10px 0 0; padding:9px 15px; font-size:14px; cursor:pointer; font-family:inherit;
+}
+.tab:hover { color:var(--fg); background:#1a1f28; }
+.tab.active { background:var(--panel); color:var(--fg); border-color:var(--border); }
+
+/* ---- layout -------------------------------------------------------------- */
+main { max-width:1000px; margin:0 auto; padding:14px 18px 30px; }
+.pane { display:none; }
+.pane.active { display:grid; gap:14px; }
+.panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px; }
+.grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:12px; }
+.field { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.actions { margin-top:14px; }
+
+/* ---- controls ------------------------------------------------------------- */
+label { color:var(--muted); font-size:13px; }
+label.check { display:flex; align-items:center; gap:8px; color:var(--fg); font-size:14px; cursor:pointer; }
+input[type=text], input[type=number], select, textarea {
+  width:100%; background:var(--field); color:var(--fg); border:1px solid var(--border);
+  border-radius:8px; padding:9px 10px; font-size:15px; font-family:inherit;
+}
+input[type=file] { color:var(--muted); font-size:13px; width:100%; }
+input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent); }
+input[type=range] { width:100%; accent-color:var(--accent); }
+textarea { min-height:150px; resize:vertical; line-height:2; }
+textarea.ltr { direction:ltr; text-align:left; font-family:Consolas, "Courier New", monospace; font-size:14px; }
+.val { color:var(--fg); font-size:14px; }
+button {
+  background:var(--accent); color:#fff; border:0; border-radius:8px; padding:9px 17px;
+  font-size:14px; cursor:pointer; font-family:inherit;
+}
+button:hover { filter:brightness(1.12); }
+button:disabled { opacity:.45; cursor:default; filter:none; }
+button.secondary { background:#2a3140; color:#dfe3ea; }
+button.ghost { background:transparent; border:1px solid var(--border); color:var(--muted); }
+button.ghost:hover { color:var(--fg); border-color:var(--accent); }
+button.danger { background:#3a2029; color:#ff9b9b; padding:4px 11px; font-size:12.5px; }
+button.icon { padding:9px 12px; background:#2a3140; color:#dfe3ea; }
+
+/* ---- text bits ------------------------------------------------------------ */
+.muted { color:var(--muted); font-size:13px; }
+.hint { color:var(--muted); font-size:12.5px; line-height:1.9; }
+.ok { color:var(--ok); } .er { color:var(--err); } .wn { color:var(--warn); }
+.hidden { display:none !important; }
+.ltr { direction:ltr; text-align:left; }
+code { background:#0c0e13; border:1px solid var(--border); border-radius:5px; padding:1px 6px; font-size:13px; }
+#result { margin:12px 0 0; font-size:14px; color:var(--fg); word-break:break-word; }
+#resultPhon { margin:4px 0 0; color:var(--muted); font-size:13px; word-break:break-all; }
+audio { width:100%; margin-top:12px; }
+.spinner {
+  display:inline-block; width:14px; height:14px; flex:none;
+  border:2px solid #3a4356; border-top-color:var(--accent); border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ---- dictionary table ----------------------------------------------------- */
+table { width:100%; border-collapse:collapse; margin-top:12px; font-size:14.5px; }
+th, td { text-align:right; padding:8px 10px; border-bottom:1px solid var(--border); }
+th { color:var(--muted); font-weight:normal; font-size:12.5px; }
+td.ltr { direction:ltr; text-align:left; font-family:Consolas, "Courier New", monospace; font-size:13.5px; }
+tbody tr:hover td { background:#1a1f28; }
+
+/* ---- chunk plan ----------------------------------------------------------- */
+.chunks { margin:6px 0 0; padding-right:22px; max-height:230px; overflow:auto; }
+.chunks li {
+  direction:ltr; text-align:left; font-family:Consolas, "Courier New", monospace;
+  font-size:13px; color:#cdd4e2; padding:3px 0; word-break:break-all;
+}
+
+/* ---- bulk ----------------------------------------------------------------- */
+.bar { height:9px; background:var(--field); border:1px solid var(--border); border-radius:6px; overflow:hidden; margin-top:12px; }
+.bar i { display:block; height:100%; width:0; background:linear-gradient(90deg, var(--accent), #8f6bff); transition:width .3s; }
+.bulk-list { list-style:none; margin:12px 0 0; padding:0; max-height:330px; overflow:auto; display:grid; gap:6px; }
+.bulk-list li {
+  display:flex; gap:10px; align-items:center; background:var(--panel2);
+  border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:13.5px;
+}
+.bulk-list li.failed { border-color:#4a2730; }
+.bulk-list .idx { color:var(--muted); white-space:nowrap; }
+.bulk-list .txt { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); }
+.bulk-list .info { white-space:nowrap; color:var(--fg); }
+.bulk-list a { color:var(--accent2); text-decoration:none; margin-right:8px; }
+.bulk-list a:hover { text-decoration:underline; }
+
+/* ---- status bar + help overlay ------------------------------------------- */
+#statusbar {
+  position:fixed; left:0; right:0; bottom:0; z-index:20; display:flex; align-items:center; gap:10px;
+  padding:9px 16px; min-height:42px; background:#12151c; border-top:1px solid var(--border); font-size:13.5px;
+}
+#status { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#status.ok { color:var(--ok); } #status.er { color:var(--err); } #status.wn { color:var(--warn); }
+.overlay {
+  position:fixed; top:0; left:0; right:0; bottom:0; z-index:50;
+  background:rgba(5,7,11,.78); display:flex; align-items:center; justify-content:center; padding:18px;
+}
+.sheet {
+  background:var(--panel); border:1px solid var(--border); border-radius:14px;
+  width:100%; max-width:860px; max-height:86vh; display:flex; flex-direction:column; overflow:hidden;
+}
+.sheet-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border); }
+.sheet pre {
+  margin:0; padding:16px; overflow:auto; direction:ltr; text-align:left;
+  font-family:Consolas, "Courier New", monospace; font-size:12.5px; line-height:1.65; color:#cfd6e4;
+}
+
+/* ---- small screens -------------------------------------------------------- */
+@media (max-width:640px) {
+  .grid2 { grid-template-columns:1fr; }
+  main { padding:12px; }
+  .tabs { padding:8px 12px 0; flex-wrap:nowrap; overflow-x:auto; }
+  .tab { white-space:nowrap; font-size:13px; padding:8px 10px; }
+  .topbar { padding:10px 12px; }
+  .bulk-list .txt { display:none; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <h1>🗣️ پارسی‌گو</h1>
+    <span class="sub">تبدیل متن فارسی به گفتار — کاملاً آفلاین (ONNX، CPU)</span>
+  </div>
+  <div class="top-right">
+    <span class="chip" id="connChip"><i class="dot wait" id="dot"></i><span id="conn">در حال اتصال</span></span>
+    <span class="chip" id="modelChip" title="وضعیت مدل">مدل: —</span>
+    <button class="ghost" id="helpBtn">راهنمای API</button>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="text">متن و ساخت</button>
+  <button class="tab" data-tab="phon">ونایه‌ها</button>
+  <button class="tab" data-tab="dict">واژه‌نامه</button>
+  <button class="tab" data-tab="set">تنظیمات همهٔ پارامترها</button>
+  <button class="tab" data-tab="bulk">تولید انبوه (Bulk)</button>
+</nav>
+
+<main>
+
+  <!-- ============ tab 1: text + synthesis ============ -->
+  <section class="pane active" id="tab-text">
+    <div class="panel">
+      <div class="field">
+        <label for="text">متن فارسی</label>
+        <textarea id="text" placeholder="متن فارسی خود را اینجا بنویسید…">سلام، حال شما چطور است؟</textarea>
+      </div>
+
+      <div class="grid2" style="margin-top:12px">
+        <div class="field">
+          <label for="voice">صدای مرجع</label>
+          <div class="row">
+            <select id="voice" style="flex:1;min-width:0"></select>
+            <button class="icon" id="voiceRefresh" title="بازخوانی فهرست صداها">⟳</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="upload">افزودن صدا (WAV — حدود ۵ ثانیه)</label>
+          <input type="file" id="upload" accept=".wav,audio/wav">
+        </div>
+        <div class="field">
+          <label for="mode">حالت گفتار</label>
+          <select id="mode"></select>
+        </div>
+        <div class="field">
+          <label for="pace">سرعت گفتار: <span class="val" id="paceVal">۱٫۰</span>×</label>
+          <input type="range" id="pace" min="0.6" max="1.5" step="0.05" value="1">
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <button id="preload" title="صدای مرجع یک بار رمزگذاری می‌شود و ساخت‌های بعدی هزینهٔ آن را نمی‌پردازند؛ برای تولید انبوه حتماً اجرا کنید.">پیش‌بارگذاری صدا</button>
+        <span class="muted" id="preloadInfo"></span>
+      </div>
+
+      <div class="row actions">
+        <button id="go">ساخت گفتار</button>
+        <button id="dl" class="secondary" disabled>دانلود WAV</button>
+        <span class="spinner hidden" id="goSpin"></span>
+      </div>
+
+      <p id="result"></p>
+      <p id="resultPhon" class="muted ltr hidden" dir="ltr"></p>
+      <audio id="player" controls></audio>
+      <p class="hint">صدای مرجع باید حدوداً ۵ ثانیه باشد. موتور ONNX خالص، بدون هیچ سرویس آنلاین، روی همین ماشین اجرا می‌شود.</p>
+    </div>
+  </section>
+
+  <!-- ============ tab 2: phonemes ============ -->
+  <section class="pane" id="tab-phon">
+    <div class="panel">
+      <div class="row">
+        <button id="extract">استخراج ونایه‌ها</button>
+        <span class="muted">از متنِ تب «متن و ساخت»، بدون ساخت صدا</span>
+        <span class="spinner hidden" id="phonSpin"></span>
+      </div>
+
+      <div class="field" style="margin-top:14px">
+        <label for="phonEdit">ونایه‌ها (قابل ویرایش)</label>
+        <textarea id="phonEdit" class="ltr" dir="ltr" placeholder="salAm hAle1 SomA Cetor ?ast"></textarea>
+      </div>
+
+      <label class="check" style="margin-top:10px">
+        <input type="checkbox" id="useEdited">
+        ساخت با ونایه‌های ویرایش‌شده
+      </label>
+      <p class="hint">وقتی این گزینه روشن باشد، دکمهٔ «ساخت گفتار» در تب اول همین رشته را به‌عنوان ونایه می‌فرستد (input=phonemes).
+      ویرایش‌ها <b>یک‌بار مصرف‌اند</b> و در سرور ذخیره نمی‌شوند؛ برای ماندگاری از «واژه‌نامه» استفاده کنید.</p>
+
+      <h3>برنامهٔ قطعه‌ها (chunks)</h3>
+      <ol class="chunks" id="chunkList"></ol>
+      <p class="muted hidden" id="phonStatus"></p>
+    </div>
+  </section>
+
+  <!-- ============ tab 3: dictionary ============ -->
+  <section class="pane" id="tab-dict">
+    <div class="panel">
+      <div class="grid2">
+        <div class="field">
+          <label for="dWord">واژه (فارسی)</label>
+          <input type="text" id="dWord" placeholder="بردارسازی">
+        </div>
+        <div class="field">
+          <label for="dPhon">ونایه‌ها (لاتین، مطابق رشتهٔ ونایه‌ها)</label>
+          <input type="text" id="dPhon" class="ltr" dir="ltr" placeholder="bordArAzi">
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button id="dAdd">افزودن</button>
+        <span class="muted" id="dMsg"></span>
+      </div>
+
+      <table id="dTable">
+        <thead><tr><th>واژه</th><th>ونایه‌ها</th><th style="width:70px"></th></tr></thead>
+        <tbody id="dBody"></tbody>
+      </table>
+      <p class="muted" id="dEmpty"></p>
+    </div>
+
+    <div class="panel">
+      <h3 style="margin-top:0">راهنمای واژه‌نامه</h3>
+      <p class="hint">
+        هر سطرِ فایل یک جفت است: <code>واژه ⇥ ونایه‌ها</code> (جداساز: Tab).<br>
+        جست‌وجوی واژه حروف کوچک/بزرگ، نشانه‌گذاری، نیم‌فاصله و اعراب را نادیده می‌گیرد؛
+        یعنی <b>«بُردارسازی»</b> و «بردارسازی» و «bArDArAzi» یک کلید واحد‌اند.
+        مثال: <span class="ltr" dir="ltr">بُردارسازی ⇥ bordArAzi</span><br>
+        واژه‌هایی که اینجا ثبت می‌کنید جایگزین خروجی G2P می‌شوند و روی همهٔ ساخت‌ها اثر می‌گذارند.
+      </p>
+      <p class="hint">فایل ذخیره: <code id="dictPath">dicts/user.dict</code> — پس از هر افزودن/حذف روی دیسک نوشته می‌شود.</p>
+    </div>
+  </section>
+
+  <!-- ============ tab 4: all parameters ============ -->
+  <section class="pane" id="tab-set">
+    <div class="panel">
+      <div class="grid2">
+        <div class="field">
+          <label for="s-mode">حالت گفتار (mode)</label>
+          <select id="s-mode"></select>
+        </div>
+        <div class="field">
+          <label for="s-pace">سرعت (pace): <span class="val" id="vPace">۱٫۰۰</span></label>
+          <input type="range" id="s-pace" min="0.6" max="1.5" step="0.05">
+          <span class="hint" id="lim-pace"></span>
+        </div>
+        <div class="field">
+          <label for="s-temp">دما (temperature): <span class="val" id="vTemp">۰٫۳۰</span></label>
+          <input type="range" id="s-temp" min="0.05" max="2" step="0.05">
+          <span class="hint" id="lim-temp"></span>
+        </div>
+        <div class="field">
+          <label for="s-retries">تلاش دوبارهٔ کیفیت (retries)</label>
+          <input type="number" id="s-retries" min="1" max="4" step="1">
+          <span class="hint" id="lim-retries"></span>
+        </div>
+        <div class="field">
+          <label for="s-chunk">حد توکن هر قطعه (chunk-tokens)</label>
+          <input type="number" id="s-chunk" min="8" max="32" step="1">
+          <span class="hint" id="lim-chunk"></span>
+        </div>
+        <div class="field">
+          <label for="s-pause">مقیاس مکث‌ها (pause-scale): <span class="val" id="vPause">۱٫۰</span></label>
+          <input type="range" id="s-pause" min="0" max="3" step="0.1">
+          <span class="hint" id="lim-pause"></span>
+        </div>
+        <div class="field">
+          <label for="s-seed">بذر تصادفی (seed)</label>
+          <div class="row">
+            <input type="number" id="s-seed" placeholder="خالی = تصادفی" style="flex:1;min-width:0">
+            <button class="secondary" id="seedRnd" title="پاک کردن بذر؛ هر درخواست خروجی متفاوت می‌دهد">تصادفی</button>
+          </div>
+          <span class="hint">عدد ثابت ⇐ خروجی قابل تکرار (حالت «ثابت»)؛ خالی ⇐ بذر تازه در هر ساخت.</span>
+        </div>
+        <div class="field">
+          <label for="s-input">حالت ورود (input)</label>
+          <select id="s-input">
+            <option value="auto">خودکار</option>
+            <option value="text">متن</option>
+            <option value="phonemes">ونایه</option>
+          </select>
+          <span class="hint">«خودکار»: متن فارسی را G2P می‌کند و رشتهٔ لاتین را ونایه می‌داند؛ «متن» همیشه G2P می‌کند (برای ورودی عددی/نمادی)؛ «ونایه» هرگز G2P نمی‌کند.</span>
+        </div>
+        <div class="field">
+          <label for="s-dict">فرهنگ این درخواست (dict=)</label>
+          <input type="text" id="s-dict" class="ltr" dir="ltr" placeholder="واژه=ph;واژهٔ۲=ph2">
+          <span class="hint">به شکل <code>word=phon;word2=phon2</code> — با <code>;</code> جدا کنید. فقط برای همین ساخت اعمال می‌شود و جای واژه‌نامهٔ دائمی را نمی‌گیرد.</span>
+        </div>
+        <div class="field">
+          <label>پرچم‌ها</label>
+          <label class="check"><input type="checkbox" id="s-zn"> zero-noise — فقط برای آزمون‌های تکرارپذیر</label>
+          <span class="hint">نویز صفر فقط برای آزمون‌های تکرارپذیر موتور است (برای تکرار نتیجه همین‌قدر کافی است seed بگذارید) و با بسیاری از صداهای مِرجع خروجی را بی‌صدا می‌سازد؛ برای گفتار عادی خاموش بماند.</span>
+          <label class="check"><input type="checkbox" id="s-ez"> keep-ezafe (نگه‌داشتن نشانِ «1”ِ اضافه)</label>
+        </div>
+        <div class="field">
+          <label>رشته‌های پردازش (threads) — فقط نمایش</label>
+          <div class="val" id="threadsOut">—</div>
+          <span class="hint">از <code>/api/config</code> خوانده می‌شود؛ با <code>--threads</code> در سرور تنظیم می‌شود.</span>
+        </div>
+      </div>
+
+      <div class="row actions">
+        <button class="secondary" id="reset">بازنشانی به پیش‌فرض</button>
+        <span class="muted" id="setMsg"></span>
+      </div>
+      <p class="hint">همهٔ مقادیر در حافظهٔ مرورگر (localStorage) ذخیره می‌شوند و پس از باز شدن دوباره برمی‌گردند.</p>
+    </div>
+  </section>
+
+  <!-- ============ tab 5: bulk ============ -->
+  <section class="pane" id="tab-bulk">
+    <div class="panel">
+      <div class="field">
+        <label for="bulkText">متن‌ها — هر سطر غیرخالی یک ساخت مستقل</label>
+        <textarea id="bulkText" dir="rtl" placeholder="سلام، حال شما چطور است؟&#10;امروز هوا خوب است.&#10;به خانه برو."></textarea>
+      </div>
+      <div class="row actions">
+        <button id="bulkGo">شروع</button>
+        <button id="bulkStop" class="secondary" disabled>توقف</button>
+        <span class="spinner hidden" id="bulkSpin"></span>
+        <span class="muted" id="bulkStatus"></span>
+      </div>
+      <div class="bar"><i id="bulkBar"></i></div>
+      <ul class="bulk-list" id="bulkList"></ul>
+      <p class="muted" id="bulkTotal"></p>
+      <p class="hint">ساخت‌ها یکی‌یکی و با تنظیمات فعلی (و صدای انتخاب‌شده) انجام می‌شوند؛ صدای مرجع یک بار رمزگذاری شده و برای همهٔ سطرها بازاستفاده می‌شود.
+      اگر در «تنظیمات» حالت ورود «ونایه» باشد، هر سطر باید یک رشتهٔ ونایه باشد؛ در حالت «خودکار/متن» هر سطر متن فارسی است.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- status bar (all errors land here) -->
+<div id="statusbar">
+  <span class="spinner hidden" id="statusSpin"></span>
+  <span id="status">در حال راه‌اندازی…</span>
+</div>
+
+<!-- API help overlay -->
+<div class="overlay hidden" id="helpBox">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2>راهنمای API سرور</h2>
+      <button class="secondary" id="helpClose">بستن</button>
+    </div>
+    <pre id="helpPre">در حال دریافت…</pre>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   0. small helpers
+   ===================================================================== */
+var $ = function (id) { return document.getElementById(id); };
+
+// Persian digits + decimal point, for anything user-facing
+function fa(s) {
+  return String(s).replace(/[0-9]/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[+d]; })
+                  .replace(/\./g, '٫');
+}
+function num(v, d) { return fa(Number(v).toFixed(d === undefined ? 1 : d)); }
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined && text !== null) e.textContent = text;
+  return e;
+}
+
+/* =====================================================================
+   1. status bar + spinner
+   ===================================================================== */
+var statusKind = '', statusTimer = null;
+
+function setStatus(msg, kind) {
+  statusKind = kind || '';
+  var s = $('status');
+  s.textContent = msg;
+  s.className = statusKind;
+  if (statusTimer) clearTimeout(statusTimer);
+  // errors stay until something else happens; info fades after a while
+  if (statusKind !== 'er') {
+    statusTimer = setTimeout(function () {
+      if (statusKind !== 'er') s.textContent = '';
+    }, 8000);
+  }
+}
+function busy(on) { $('statusSpin').classList.toggle('hidden', !on); }
+
+// nothing may escape as an unhandled rejection -> always show it
+window.addEventListener('unhandledrejection', function (e) {
+  var m = (e.reason && e.reason.message) ? e.reason.message : String(e.reason);
+  setStatus('خطا: ' + m, 'er');
+  if (e.preventDefault) e.preventDefault();
+});
+window.addEventListener('error', function (e) {
+  setStatus('خطا: ' + e.message, 'er');
+});
+
+/* =====================================================================
+   2. fetch core: AbortController timeouts + friendly errors
+   ===================================================================== */
+var SHORT = 30000;      // normal calls: 30 s
+var LONG = 900000;      // synth / bulk: 15 min
+
+function friendly(e) {
+  if (!e) return new Error('خطای ناشناخته');
+  if (e.name === 'AbortError') return new Error('مهلت درخواست تمام شد (timeout)');
+  if (e instanceof TypeError) return new Error('ارتباط با سرور برقرار نشد');
+  return e;                       // already one of ours (server message, HTTP n)
+}
+
+// fetch(url, opts) with a timeout; non-2xx -> Error carrying the server
+// message ({"error":..} JSON preferred, raw text as fallback). The body is
+// read inside the same timeout window.
+async function call(url, opts, ms, extSignal) {
+  var ac = new AbortController();
+  var timer = setTimeout(function () { ac.abort(); }, ms || SHORT);
+  var onExt = function () { ac.abort(); };
+  if (extSignal) {
+    if (extSignal.aborted) onExt(); else extSignal.addEventListener('abort', onExt);
+  }
+  try {
+    var r = await fetch(url, Object.assign({}, opts, { signal: ac.signal }));
+    if (!r.ok) {
+      var raw = '';
+      try { raw = await r.text(); } catch (e0) {}
+      var msg = '';
+      try {
+        var j = JSON.parse(raw);
+        msg = (j && (j.error || j.message)) || '';
+      } catch (e1) {}
+      if (!msg) msg = 'HTTP ' + r.status + (raw ? ': ' + raw.split('\n')[0].slice(0, 200) : '');
+      var err = new Error(msg);
+      err.status = r.status;
+      throw err;
+    }
+    var txt = await r.text();
+    if (txt.charAt(0) === '{' || txt.charAt(0) === '[') {
+      try { return JSON.parse(txt); } catch (e2) { return txt; }
+    }
+    return txt;
+  } catch (e) {
+    throw friendly(e);
+  } finally {
+    clearTimeout(timer);
+    if (extSignal) extSignal.removeEventListener('abort', onExt);
+  }
+}
+function GET(url, ms, ext) { return call(url, { method: 'GET' }, ms, ext); }
+function POST(url, body, ms, ext) {
+  return call(url, { method: 'POST', body: body,
+                     headers: { 'Content-Type': 'text/plain; charset=utf-8' } }, ms, ext);
+}
+function POSTJSON(url, obj, ms) {
+  return call(url, { method: 'POST', body: JSON.stringify(obj),
+                     headers: { 'Content-Type': 'application/json' } }, ms);
+}
+function DEL(url, ms) { return call(url, { method: 'DELETE' }, ms); }
+
+// base64 WAV -> Blob (for <audio> and download links)
+function b64blob(b64, type) {
+  var bin = atob(b64);
+  var u = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return new Blob([u], { type: type || 'audio/wav' });
+}
+
+/* =====================================================================
+   3. config + settings (defaults/limits from /api/config, saved in
+      localStorage, every control in every tab mirrors the same object)
+   ===================================================================== */
+var DEFAULTS = { mode:'split', pace:1, temperature:0.3, retries:3, chunk_tokens:18, pause_scale:1 };
+var LIMITS = { pace:[0.6,1.5], temperature:[0.05,2.0], retries:[1,4], chunk_tokens:[8,32], pause_scale:[0,3] };
+var MODES = [
+  { value:'split', label:'با مکث ویرگول‌ها', desc:'pause at every comma/semicolon (reading aloud)' },
+  { value:'pack',  label:'یکپارچه و روان',    desc:'merge comma phrases into longer breaths' }
+];
+var config = null;
+
+function baseSettings() {
+  return {
+    mode: DEFAULTS.mode, pace: DEFAULTS.pace, temperature: DEFAULTS.temperature,
+    retries: DEFAULTS.retries, chunk_tokens: DEFAULTS.chunk_tokens,
+    pause_scale: DEFAULTS.pause_scale,
+    seed: '', input: 'auto', dict: '',
+    zero_noise: false, keep_ezafe: false
+  };
+}
+var settings = baseSettings();
+var STORE = 'parsigo.ui.settings.v1';
+
+function loadStored() {
+  try {
+    var o = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (!o) return;
+    for (var k in settings) {
+      if (Object.prototype.hasOwnProperty.call(o, k) && o[k] !== undefined) settings[k] = o[k];
+    }
+  } catch (e) {}
+}
+function saveSettings() {
+  try { localStorage.setItem(STORE, JSON.stringify(settings)); } catch (e) {}
+}
+
+// pull config (hard-coded fallbacks when the endpoint is missing/old)
+async function loadConfig() {
+  try {
+    var c = await GET('/api/config');
+    if (c && c.defaults) {
+      config = c;
+      DEFAULTS = {
+        mode: c.defaults.mode || 'split',
+        pace: (c.defaults.pace !== undefined) ? c.defaults.pace : 1,
+        temperature: (c.defaults.temperature !== undefined) ? c.defaults.temperature : 0.3,
+        retries: (c.defaults.retries !== undefined) ? c.defaults.retries : 3,
+        chunk_tokens: (c.defaults.chunk_tokens !== undefined) ? c.defaults.chunk_tokens : 18,
+        pause_scale: (c.defaults.pause_scale !== undefined) ? c.defaults.pause_scale : 1
+      };
+    }
+    if (c && c.limits) {
+      for (var k in c.limits) if (Object.prototype.hasOwnProperty.call(c.limits, k)) LIMITS[k] = c.limits[k];
+    }
+    if (c && c.modes && c.modes.length) MODES = c.modes;
+  } catch (e) {
+    config = null;
+    setStatus('پیکربندی سرور در دسترس نیست؛ مقادیر پیش‌فرض نمایش داده می‌شود (' + e.message + ')', 'er');
+  }
+}
+
+function clampNum(key, isInt) {
+  var L = LIMITS[key];
+  if (!L) return;
+  var v = Number(settings[key]);
+  if (isNaN(v)) v = Number(DEFAULTS[key]);
+  v = Math.min(Number(L[1]), Math.max(Number(L[0]), v));
+  settings[key] = isInt ? Math.round(v) : v;
+}
+function sanitize() {
+  clampNum('pace'); clampNum('temperature'); clampNum('pause_scale');
+  clampNum('retries', true); clampNum('chunk_tokens', true);
+  var ok = false;
+  for (var i = 0; i < MODES.length; i++) if (MODES[i].value === settings.mode) ok = true;
+  if (!ok) settings.mode = DEFAULTS.mode;
+  if (['auto', 'text', 'phonemes'].indexOf(settings.input) < 0) settings.input = 'auto';
+  settings.zero_noise = !!settings.zero_noise;
+  settings.keep_ezafe = !!settings.keep_ezafe;
+  settings.seed = String(settings.seed === null || settings.seed === undefined ? '' : settings.seed).replace(/[^\d]/g, '');
+  settings.dict = String(settings.dict === null || settings.dict === undefined ? '' : settings.dict);
+}
+
+// element id -> setting key; both tabs edit the same settings object
+var BIND = [
+  { id:'mode',      key:'mode',          type:'select' },
+  { id:'pace',      key:'pace',          type:'range', span:'paceVal', d:1 },
+  { id:'s-mode',    key:'mode',          type:'select' },
+  { id:'s-pace',    key:'pace',          type:'range', span:'vPace',   d:2 },
+  { id:'s-temp',    key:'temperature',   type:'range', span:'vTemp',   d:2 },
+  { id:'s-retries', key:'retries',       type:'number' },
+  { id:'s-chunk',   key:'chunk_tokens',  type:'number' },
+  { id:'s-pause',   key:'pause_scale',   type:'range', span:'vPause',  d:1 },
+  { id:'s-seed',    key:'seed',          type:'text' },
+  { id:'s-input',   key:'input',         type:'select' },
+  { id:'s-dict',    key:'dict',          type:'text' },
+  { id:'s-zn',      key:'zero_noise',    type:'check' },
+  { id:'s-ez',      key:'keep_ezafe',    type:'check' }
+];
+
+function bindCtl(b) {
+  var e = $(b.id);
+  if (!e) return;
+  var handler = function () {
+    if (b.type === 'check') settings[b.key] = e.checked;
+    else if (b.type === 'range' || b.type === 'number') settings[b.key] = (e.value === '') ? '' : Number(e.value);
+    else settings[b.key] = e.value;
+    if (b.key === 'seed') settings.seed = String(settings.seed).replace(/[^\d]/g, '');
+    if (b.span && $(b.span)) $(b.span).textContent = num(settings[b.key], b.d);
+    saveSettings();
+    syncUI(b.id);                    // mirror into the other tab's control
+  };
+  e.addEventListener('input', handler);
+  e.addEventListener('change', handler);
+}
+function syncUI(skipId) {
+  for (var i = 0; i < BIND.length; i++) {
+    var b = BIND[i];
+    if (b.id === skipId) continue;
+    var e = $(b.id);
+    if (!e) continue;
+    var v = settings[b.key];
+    if (b.type === 'check') e.checked = !!v;
+    else e.value = (v === null || v === undefined) ? '' : String(v);
+    if (b.span && $(b.span)) $(b.span).textContent = num(v, b.d);
+  }
+}
+function fillModes() {
+  var sels = [$('mode'), $('s-mode')];
+  for (var s = 0; s < sels.length; s++) {
+    var sel = sels[s];
+    if (!sel) continue;
+    sel.innerHTML = '';
+    for (var i = 0; i < MODES.length; i++) {
+      var o = el('option', null, MODES[i].label);
+      o.value = MODES[i].value;
+      if (MODES[i].desc) o.title = MODES[i].desc;   // English desc as tooltip
+      sel.appendChild(o);
+    }
+  }
+}
+function setRange(id, lim, step) {
+  var e = $(id);
+  if (!e || !lim) return;
+  e.min = lim[0]; e.max = lim[1]; e.step = step;
+}
+function rangeHint(id, lim) {
+  var e = $(id);
+  if (e) e.textContent = lim ? ('محدوده: ' + fa(lim[0]) + ' تا ' + fa(lim[1])) : '';
+}
+function applyLimits() {
+  setRange('pace', LIMITS.pace, 0.05);
+  setRange('s-pace', LIMITS.pace, 0.05);
+  setRange('s-temp', LIMITS.temperature, 0.05);
+  setRange('s-pause', LIMITS.pause_scale, 0.1);
+  var r = $('s-retries'); if (r && LIMITS.retries) { r.min = LIMITS.retries[0]; r.max = LIMITS.retries[1]; r.step = 1; }
+  var c = $('s-chunk');   if (c && LIMITS.chunk_tokens) { c.min = LIMITS.chunk_tokens[0]; c.max = LIMITS.chunk_tokens[1]; c.step = 1; }
+  rangeHint('lim-pace', LIMITS.pace);
+  rangeHint('lim-temp', LIMITS.temperature);
+  rangeHint('lim-retries', LIMITS.retries);
+  rangeHint('lim-chunk', LIMITS.chunk_tokens);
+  rangeHint('lim-pause', LIMITS.pause_scale);
+}
+function refreshMeta() {
+  if (!config) return;
+  var t = $('threadsOut');
+  if (t) t.textContent = (config.threads > 0) ? fa(config.threads) : 'خودکار';
+  if (config.dict_path) $('dictPath').textContent = config.dict_path;
+}
+
+// seed helpers: "تصادفی" clears the seed, "بازنشانی" restores every default
+$('seedRnd').addEventListener('click', function () {
+  settings.seed = '';
+  saveSettings();
+  syncUI();
+  setStatus('بذر پاک شد؛ هر ساخت خروجی متفاوتی می‌دهد');
+});
+$('reset').addEventListener('click', function () {
+  settings = baseSettings();
+  try { localStorage.removeItem(STORE); } catch (e) {}
+  saveSettings();
+  syncUI();
+  $('setMsg').textContent = 'همهٔ پارامترها به پیش‌فرض بازنشانی شد.';
+  setStatus('پارامترها به پیش‌فرض بازنشانی شد', 'ok');
+});
+
+/* =====================================================================
+   4. tabs (client-side, RTL)
+   ===================================================================== */
+var TABS = ['text', 'phon', 'dict', 'set', 'bulk'];
+function showTab(name) {
+  if (TABS.indexOf(name) < 0) name = 'text';
+  for (var i = 0; i < TABS.length; i++) {
+    var n = TABS[i];
+    var pane = $('tab-' + n);
+    if (pane) pane.classList.toggle('active', n === name);
+    var btn = document.querySelector('.tab[data-tab="' + n + '"]');
+    if (btn) btn.classList.toggle('active', n === name);
+  }
+}
+Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
+  b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); });
+});
+window.addEventListener('hashchange', function () {
+  showTab((location.hash || '').replace('#', ''));
+});
+
+/* =====================================================================
+   5. health poll (every 10 s) — connection dot + model state
+   ===================================================================== */
+var pollBusy = false;
+
+function setConn(state) {
+  var dot = $('dot');
+  dot.className = 'dot ' + state;
+  $('conn').textContent = state === 'on' ? 'متصل' : state === 'wait' ? 'در حال اتصال' : 'قطع';
+}
+async function pollHealth() {
+  if (pollBusy) return;            // never stack two polls
+  pollBusy = true;
+  try {
+    var h = await GET('/api/health', 15000);
+    setConn('on');
+    $('modelChip').textContent = h && h.model_loaded ? 'مدل: بارگذاری شده' : 'مدل: آزاد';
+    if (h) $('modelChip').title = 'نسخه ' + (h.version || '—') + ' — پورت ' + (h.port || '—') + ' — ' + (h.base || '');
+  } catch (e) {
+    setConn('off');
+    $('modelChip').textContent = 'مدل: —';
+  } finally {
+    pollBusy = false;
+  }
+}
+
+/* =====================================================================
+   6. voices: list, upload, preload (encode once)
+   ===================================================================== */
+var preloadOK = true;
+
+async function loadVoices(selectPath) {
+  var sel = $('voice');
+  try {
+    var list = await GET('/api/voices');
+    if (!Array.isArray(list)) list = [];
+    var prev = selectPath || sel.value;
+    sel.innerHTML = '';
+    if (!list.length) sel.appendChild(el('option', null, '(صدایی یافت نشد)'));
+    for (var i = 0; i < list.length; i++) {
+      var o = el('option', null, list[i]);
+      o.value = list[i];
+      sel.appendChild(o);
+    }
+    var def = (config && config.default_voice) || '';
+    if (prev && list.indexOf(prev) >= 0) sel.value = prev;
+    else if (def && list.indexOf(def) >= 0) sel.value = def;
+    hintPreload();
+  } catch (e) {
+    sel.innerHTML = '';
+    sel.appendChild(el('option', null, '(فهرست صداها در دسترس نیست)'));
+    setStatus('فهرست صداها خوانده نشد: ' + e.message, 'er');
+  }
+}
+
+// show whether the selected voice is already encoded
+async function hintPreload() {
+  try {
+    var st = await GET('/api/voice/state', SHORT);
+    var v = $('voice').value;
+    if (st && st.loaded && st.loaded.indexOf(v) >= 0)
+      $('preloadInfo').textContent = '✓ این صدا از قبل رمزگذاری شده است';
+  } catch (e) {}
+}
+
+$('voice').addEventListener('change', hintPreload);
+
+$('voiceRefresh').addEventListener('click', function () {
+  loadVoices();
+  setStatus('فهرست صداها بازخوانی شد');
+});
+
+$('upload').addEventListener('change', async function () {
+  var f = this.files[0];
+  this.value = '';
+  if (!f) return;
+  // The server only decodes RIFF/WAVE (no mp3/ogg/flac decoder on an offline
+  // Win7 box) and caps bodies at 32 MB — fail early and clearly in the browser.
+  try {
+    var head = new Uint8Array(await f.slice(0, 12).arrayBuffer());
+    var riff = head.length >= 12 &&
+               String.fromCharCode(head[0], head[1], head[2], head[3]) === 'RIFF' &&
+               String.fromCharCode(head[8], head[9], head[10], head[11]) === 'WAVE';
+    if (!riff) {
+      setStatus('فقط فایل WAV پذیرفته می‌شود — mp3/ogg/flac خوانده نمی‌شوند. تبدیل: ffmpeg -i in.mp3 -ar 24000 -ac 1 out.wav', 'er');
+      return;
+    }
+  } catch (e) { /* the server re-checks anyway */ }
+  if (f.size > 32000000) {
+    setStatus('فایل صدا بیش از حد بزرگ است (سقف سرور ۳۲ مگابایت)؛ کلیپ کوتاه‌تری انتخاب کنید.', 'er');
+    return;
+  }
+  var name = (f.name || 'upload.wav').replace(/[^\w.\-]/g, '_');
+  busy(true);
+  setStatus('در حال بارگذاری صدا…');
+  try {
+    var j = await call('/api/voice?name=' + encodeURIComponent(name), { method: 'POST', body: f }, SHORT);
+    await loadVoices(j && j.path);
+    setStatus('صدا بارگذاری شد: ' + ((j && j.path) || name), 'ok');
+  } catch (e) {
+    setStatus('خطا در بارگذاری صدا: ' + e.message, 'er');
+  } finally {
+    busy(false);
+  }
+});
+
+$('preload').addEventListener('click', async function () {
+  var b = this;
+  var v = $('voice').value;
+  var q = v ? '?voice=' + encodeURIComponent(v) : '';
+  b.disabled = true;
+  busy(true);
+  $('preloadInfo').textContent = 'در حال رمزگذاری صدا…';
+  try {
+    var j = await POST('/api/voice/load' + q, '', SHORT);
+    var ms = (j && typeof j === 'object') ? j.ms : undefined;
+    var msg = (j && j.cached) ? '✓ این صدا از قبل رمزگذاری شده بود (بدون هزینه)'
+                              : '✓ رمزگذاری شد در ' + (ms !== undefined ? fa(ms) + ' ms' : '—');
+    if (j && j.silent) msg += ' — ⚠ در این فایل صدایی نیست؛ خروجی بی‌صدا می‌شود';
+    else if (j && j.gain > 1.05) msg += ' — صدای کم‌بلند ' + fa(Math.round(j.gain)) + '× تقویت شد';
+    $('preloadInfo').textContent = msg;
+    if (j && j.silent) setStatus('⚠ در فایل مرجع صدایی نیست — خروجی بی‌صدا می‌شود؛ فایل دیگری انتخاب کنید', 'er');
+    else if (j && j.gain > 1.05) setStatus('صدای مرجع کم‌بلند بود و ' + fa(Math.round(j.gain)) + '× تقویت شد؛ ساخت‌های بعدی از همان استفاده می‌کنند', 'ok');
+    else setStatus('صدای مرجع یک بار رمزگذاری شد؛ ساخت‌های بعدی از همان استفاده می‌کنند', 'ok');
+  } catch (e) {
+    $('preloadInfo').textContent = '';
+    if (e.status === 404 || e.status === 405) {
+      preloadOK = false;                 // older server: hide/disable the control
+      setStatus('پیش‌بارگذاری صدا در این سرور وجود ندارد (قدیمی است)', 'er');
+    } else {
+      setStatus('خطا در پیش‌بارگذاری: ' + e.message, 'er');
+    }
+  } finally {
+    busy(false);
+    b.disabled = !preloadOK;
+  }
+});
+
+/* =====================================================================
+   7. synthesis (shared by tab 1 and bulk)
+   ===================================================================== */
+function synthQuery(inputMode) {
+  var q = new URLSearchParams();
+  q.set('format', 'json');
+  q.set('input', inputMode);
+  var v = $('voice').value;
+  if (v) q.set('voice', v);
+  q.set('mode', String(settings.mode));
+  q.set('pace', qnum('pace'));
+  q.set('temperature', qnum('temperature'));
+  q.set('retries', qnum('retries'));
+  q.set('chunk-tokens', qnum('chunk_tokens'));
+  q.set('pause-scale', qnum('pause_scale'));
+  if (settings.seed !== '' && settings.seed !== null && !isNaN(Number(settings.seed))) q.set('seed', String(settings.seed));
+  if (settings.zero_noise) q.set('zero-noise', '1');
+  if (settings.keep_ezafe) q.set('keep-ezafe', '1');
+  if (settings.dict) q.set('dict', settings.dict);
+  return q;
+}
+
+// a numeric param may be temporarily empty while the user types -> fall back
+function qnum(key) {
+  var v = Number(settings[key]);
+  if (settings[key] === '' || isNaN(v)) v = Number(DEFAULTS[key]);
+  return String(v);
+}
+
+// POST /api/synth (format=json) -> { blob, json, wall seconds }
+async function runSynth(bodyText, inputMode, ext) {
+  var t0 = Date.now();
+  var j = await POST('/api/synth?' + synthQuery(inputMode).toString(), bodyText, LONG, ext);
+  if (!j || typeof j !== 'object' || !j.wav) throw new Error('پاسخ نامعتبر از /api/synth');
+  return { blob: b64blob(j.wav, 'audio/wav'), j: j, wall: (Date.now() - t0) / 1000 };
+}
+
+// what body/input= a synthesis should use (edited phonemes win when asked)
+function inputPlan() {
+  var edited = $('phonEdit').value.trim();
+  if ($('useEdited').checked && edited) return { mode: 'phonemes', body: edited, note: '' };
+  var txt = $('text').value;
+  if (settings.input === 'phonemes') {
+    if (edited) return { mode: 'phonemes', body: edited, note: '' };
+    return { mode: 'auto', body: txt,
+             note: 'حالت ورود «ونایه» است اما ونایه‌ای ویرایش نشده؛ متن فرستاده شد.' };
+  }
+  return { mode: settings.input, body: txt, note: '' };
+}
+
+var lastURL = null;
+
+$('go').addEventListener('click', async function () {
+  var go = this;
+  var plan = inputPlan();
+  if (!plan.body || !plan.body.trim()) { setStatus('متنی وارد نشده است', 'er'); return; }
+
+  go.disabled = true;
+  $('goSpin').classList.remove('hidden');
+  busy(true);
+  setStatus('در حال ساخت گفتار…');
+  try {
+    var res = await runSynth(plan.body, plan.mode, null);
+    var j = res.j;
+    if (lastURL) URL.revokeObjectURL(lastURL);
+    lastURL = URL.createObjectURL(res.blob);
+    $('player').src = lastURL;
+    var p = $('player').play();
+    if (p && p.catch) p.catch(function () {});
+
+    $('dl').disabled = false;
+    var quiet = j.quiet_chunks || 0;
+    $('result').textContent =
+      num(j.seconds, 1) + ' ثانیه صدا در ' + num(res.wall, 1) + ' ثانیه' +
+      ' — ' + fa((j.chunks || []).length) + ' قطعه' +
+      ' — ' + fa(j.ms) + ' ms ساخت سمت سرور' +
+      (plan.note ? ' — ' + plan.note : '') +
+      (quiet ? ' — ' + fa(quiet) + ' قطعه از آستانهٔ کیفیت رد نشد' : '');
+    var ph = $('resultPhon');
+    ph.textContent = 'ونایه‌ها: ' + (j.phonemes || '');
+    ph.classList.remove('hidden');
+    if (quiet) {
+      // a chunk that failed every retry is silent audio — never report this
+      // as an unqualified success
+      setStatus('ساخت انجام شد ولی ' + fa(quiet) + ' قطعه ممکن است بی‌صدا یا ناقص باشد؛ seed دیگری امتحان کنید', 'wn');
+    } else {
+      setStatus('ساخت انجام شد (' + num(j.seconds, 1) + ' ثانیه صدا)', 'ok');
+    }
+  } catch (e) {
+    setStatus('خطا در ساخت: ' + e.message, 'er');
+  } finally {
+    go.disabled = false;
+    $('goSpin').classList.add('hidden');
+    busy(false);
+  }
+});
+
+$('dl').addEventListener('click', function () {
+  if (!lastURL) return;
+  var a = document.createElement('a');
+  a.href = lastURL;
+  a.download = 'parsigo.wav';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+});
+
+/* =====================================================================
+   8. tab 2: phonemes + chunk plan
+   ===================================================================== */
+var phonOK = true;
+
+$('extract').addEventListener('click', async function () {
+  var b = this;
+  var txt = $('text').value;
+  if (!txt.trim()) { setStatus('ابتدا در تب «متن و ساخت» متن بنویسید', 'er'); return; }
+  var q = new URLSearchParams();
+  if (settings.keep_ezafe) q.set('keep-ezafe', '1');
+  q.set('chunk-tokens', qnum('chunk_tokens'));
+  if (settings.dict) q.set('dict', settings.dict);
+
+  b.disabled = true;
+  $('phonSpin').classList.remove('hidden');
+  busy(true);
+  try {
+    var j = await POST('/api/phonemes?' + q.toString(), txt, SHORT);
+    if (!j || typeof j !== 'object') throw new Error('پاسخ نامعتبر از /api/phonemes');
+    $('phonEdit').value = j.phonemes || '';
+    var ol = $('chunkList');
+    ol.innerHTML = '';
+    var chunks = j.chunks || [];
+    for (var i = 0; i < chunks.length; i++) {
+      var li = el('li', null, chunks[i]);
+      li.title = 'قطعهٔ ' + (i + 1);
+      ol.appendChild(li);
+    }
+    var st = $('phonStatus');
+    st.textContent = chunks.length ? (fa(chunks.length) + ' قطعه برنامه‌ریزی شد — ' + fa((j.words || []).length) + ' واژه') : '';
+    st.classList.toggle('hidden', !st.textContent);
+    setStatus('ونایه‌ها استخراج شد (' + fa(chunks.length) + ' قطعه)', 'ok');
+  } catch (e) {
+    if (e.status === 404 || e.status === 405) {
+      phonOK = false;
+      setStatus('این سرور از /api/phonemes پشتیبانی نمی‌کند (نسخهٔ قدیمی)', 'er');
+    } else {
+      setStatus('خطا در استخراج ونایه‌ها: ' + e.message, 'er');
+    }
+  } finally {
+    b.disabled = !phonOK;
+    $('phonSpin').classList.add('hidden');
+    busy(false);
+  }
+});
+
+/* =====================================================================
+   9. tab 3: dictionary
+   ===================================================================== */
+var dictOK = true;
+
+function renderDict(entries) {
+  var tb = $('dBody');
+  tb.innerHTML = '';
+  for (var i = 0; i < entries.length; i++) {
+    (function (en) {
+      var tr = el('tr');
+      var w = el('td', null, en.word);
+      w.lang = 'fa';
+      var p = el('td', 'ltr', en.phonemes);
+      p.dir = 'ltr';
+      var d = el('td');
+      var btn = el('button', 'danger', 'حذف');
+      btn.addEventListener('click', function () { delWord(en.word, btn); });
+      d.appendChild(btn);
+      tr.appendChild(w); tr.appendChild(p); tr.appendChild(d);
+      tb.appendChild(tr);
+    })(entries[i]);
+  }
+  $('dTable').classList.toggle('hidden', !entries.length);
+  $('dEmpty').textContent = entries.length ? '' : 'هنوز واژه‌ای ثبت نشده است.';
+}
+
+async function loadDict() {
+  try {
+    var j = await GET('/api/dict', SHORT);
+    if (!j || typeof j !== 'object' || !j.entries) throw new Error('پاسخ نامعتبر از /api/dict');
+    dictOK = true;
+    if (j.path) $('dictPath').textContent = j.path;
+    renderDict(j.entries);
+  } catch (e) {
+    dictOK = false;
+    $('dAdd').disabled = true;
+    $('dTable').classList.add('hidden');
+    $('dEmpty').textContent = 'واژه‌نامه در این سرور در دسترس نیست (' + e.message + ')';
+  }
+}
+
+async function afterDictChange(msg) {
+  await loadDict();
+  $('dMsg').textContent = msg;
+  setStatus(msg, 'ok');
+}
+
+$('dAdd').addEventListener('click', async function () {
+  if (!dictOK) return;
+  var w = $('dWord').value.trim();
+  var p = $('dPhon').value.trim();
+  if (!w || !p) { $('dMsg').textContent = 'هر دو فیلد لازم است.'; return; }
+  var b = this;
+  b.disabled = true;
+  busy(true);
+  $('dMsg').textContent = '';
+  try {
+    var j = await POSTJSON('/api/dict', { word: w, phonemes: p }, SHORT);
+    $('dWord').value = '';
+    $('dPhon').value = '';
+    await afterDictChange('ذخیره شد — ' + fa((j && j.entries) || 0) + ' مدخل');
+  } catch (e) {
+    setStatus('خطا در افزودن واژه: ' + e.message, 'er');
+  } finally {
+    b.disabled = !dictOK;
+    busy(false);
+  }
+});
+
+async function delWord(word, btn) {
+  if (!dictOK) return;
+  btn.disabled = true;
+  busy(true);
+  try {
+    var j = await DEL('/api/dict?word=' + encodeURIComponent(word), SHORT);
+    await afterDictChange('حذف شد — ' + fa((j && j.entries) || 0) + ' مدخل');
+  } catch (e) {
+    btn.disabled = false;
+    setStatus('خطا در حذف واژه: ' + e.message, 'er');
+  } finally {
+    busy(false);
+    if (!dictOK) btn.disabled = true;
+  }
+}
+
+$('dPhon').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') $('dAdd').click();
+});
+
+/* =====================================================================
+   10. tab 5: bulk generation (sequential, one at a time)
+   ===================================================================== */
+var bulkStop = null, bulkURLs = [];
+
+function updateBar(done, total) {
+  $('bulkBar').style.width = (total ? Math.round(done * 100 / total) : 0) + '%';
+}
+function addRow(i, n, text) {
+  var li = el('li');
+  var idx = el('span', 'idx', '[' + fa(i + 1) + '/' + fa(n) + ']');
+  var txt = el('span', 'txt', text);
+  txt.title = text;
+  var info = el('span', 'info', 'در حال ساخت…');
+  li.appendChild(idx); li.appendChild(txt); li.appendChild(info);
+  $('bulkList').appendChild(li);
+  return { li: li, info: info };
+}
+function fillRow(row, idx, o) {
+  row.info.innerHTML = '';
+  if (o.url) {
+    row.info.appendChild(document.createTextNode(
+      num(o.secs, 1) + ' ثانیه صدا در ' + num(o.wall, 1) + ' ثانیه'));
+    var a = el('a', null, 'دانلود');
+    a.href = o.url;
+    a.download = 'bulk-' + idx + '.wav';
+    row.info.appendChild(a);
+  } else {
+    row.li.classList.add('failed');
+    row.info.textContent = 'خطا: ' + o.msg;
+  }
+}
+
+$('bulkGo').addEventListener('click', async function () {
+  var lines = $('bulkText').value.split('\n');
+  var texts = [];
+  for (var i = 0; i < lines.length; i++) {
+    var s = lines[i].trim();
+    if (s) texts.push(s);
+  }
+  if (!texts.length) { setStatus('متنی وارد نشده است', 'er'); return; }
+
+  bulkStop = new AbortController();
+  var stopSignal = bulkStop.signal;
+  this.disabled = true;
+  $('bulkStop').disabled = false;
+  $('bulkSpin').classList.remove('hidden');
+  busy(true);
+  $('bulkList').innerHTML = '';
+  $('bulkTotal').textContent = '';
+  $('bulkStatus').textContent = fa(0) + '/' + fa(texts.length);
+  for (var u = 0; u < bulkURLs.length; u++) URL.revokeObjectURL(bulkURLs[u]);
+  bulkURLs = [];
+  updateBar(0, texts.length);
+
+  var t0 = Date.now(), ok = 0, failed = 0, secs = 0, quiet = 0, i2 = 0;
+  try {
+    for (i2 = 0; i2 < texts.length; i2++) {
+      if (stopSignal.aborted) break;
+      var row = addRow(i2, texts.length, texts[i2]);
+      var lt = Date.now();
+      try {
+        var res = await runSynth(texts[i2], settings.input, stopSignal);
+        var url = URL.createObjectURL(res.blob);
+        bulkURLs.push(url);
+        ok++;
+        secs += Number(res.j.seconds) || 0;
+        quiet += Number(res.j.quiet_chunks) || 0;
+        fillRow(row, i2 + 1, { url: url, secs: res.j.seconds, wall: (Date.now() - lt) / 1000 });
+      } catch (err) {
+        if (stopSignal.aborted) { row.info.textContent = 'متوقف شد'; break; }
+        failed++;
+        fillRow(row, i2 + 1, { msg: err.message });
+      }
+      updateBar(i2 + 1, texts.length);
+      $('bulkStatus').textContent = fa(i2 + 1) + '/' + fa(texts.length);
+    }
+  } finally {
+    var stopped = stopSignal.aborted;
+    updateBar(ok + failed, texts.length);
+    bulkStop = null;
+    $('bulkGo').disabled = false;
+    $('bulkStop').disabled = true;
+    $('bulkSpin').classList.add('hidden');
+    $('bulkStatus').textContent = '';
+    busy(false);
+    var total = (Date.now() - t0) / 1000;
+    $('bulkTotal').textContent =
+      (stopped ? 'متوقف شد — ' : 'تمام شد — ') +
+      fa(ok) + '/' + fa(texts.length) + ' موفق' +
+      (failed ? '، ' + fa(failed) + ' ناموفق' : '') +
+      (quiet ? '، ' + fa(quiet) + ' قطعه بی‌کیفیت' : '') +
+      ' — ' + num(secs, 1) + ' ثانیه صدا در ' + num(total, 1) + ' ثانیه';
+    setStatus((stopped ? 'تولید انبوه متوقف شد' : 'تولید انبوه تمام شد') +
+              ' (' + fa(ok) + '/' + fa(texts.length) + ')' +
+              (quiet ? ' — ' + fa(quiet) + ' قطعه ممکن است بی‌صدا یا ناقص باشد' : ''),
+              failed ? 'er' : (quiet ? 'wn' : 'ok'));
+  }
+});
+
+$('bulkStop').addEventListener('click', function () {
+  if (bulkStop) bulkStop.abort();
+  $('bulkStatus').textContent = 'در حال توقف…';
+});
+
+/* =====================================================================
+   11. API help overlay
+   ===================================================================== */
+var helpLoaded = false;
+$('helpBtn').addEventListener('click', async function () {
+  $('helpBox').classList.remove('hidden');
+  if (helpLoaded) return;
+  $('helpPre').textContent = 'در حال دریافت…';
+  try {
+    var t = await GET('/api/help');
+    $('helpPre').textContent = (typeof t === 'string') ? t : JSON.stringify(t, null, 2);
+    helpLoaded = true;
+  } catch (e) {
+    $('helpPre').textContent = 'دریافت راهنما ممکن نشد: ' + e.message;
+  }
+});
+$('helpClose').addEventListener('click', function () { $('helpBox').classList.add('hidden'); });
+$('helpBox').addEventListener('click', function (e) { if (e.target === this) this.classList.add('hidden'); });
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') $('helpBox').classList.add('hidden');
+});
+
+/* =====================================================================
+   12. closing the tab/window releases the model on the server
+   ===================================================================== */
+// pagehide fires when the page is really going away (tab close, window
+// close, navigation, refresh) — the moment to hand the ~500 MB of weights
+// back. sendBeacon keeps working while the page unloads, and /api/unload
+// answers even to an empty body; the next request simply reloads the model
+// (~1 s), exactly like --idle-unload does on its own.
+window.addEventListener('pagehide', function () {
+  try {
+    if (bulkStop) bulkStop.abort();
+    navigator.sendBeacon('/api/unload');
+  } catch (e) { /* nothing to do: the page is going away */ }
+});
+
+/* =====================================================================
+   13. init
+   ===================================================================== */
+function afterConfig() {
+  loadStored();
+  sanitize();
+  applyLimits();
+  fillModes();
+  for (var i = 0; i < BIND.length; i++) bindCtl(BIND[i]);
+  syncUI();
+  refreshMeta();
+
+  var h = (location.hash || '').replace('#', '');
+  showTab(TABS.indexOf(h) >= 0 ? h : 'text');
+
+  setConn('wait');
+  pollHealth();
+  setInterval(pollHealth, 10000);
+
+  loadVoices();          // each loader catches its own errors
+  loadDict();
+  setStatus(config ? 'آماده — سرور در دسترس است'
+                   : 'سرور در دسترس نیست؛ اتصال را بررسی کنید',
+            config ? 'ok' : 'er');
+}
+
+loadConfig()
+  .then(afterConfig)
+  .catch(function (e) { setStatus('خطای راه‌اندازی: ' + e.message, 'er'); });
+</script>
+</body>
+</html>

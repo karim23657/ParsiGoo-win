@@ -1,0 +1,141 @@
+{
+  "comment": "farsi-tts download list — edit freely; one object per file. dir is relative to the program folder, kind is model|voice|dict.",
+  "items": [
+    {
+      "name": "manifest.json",
+      "dir": "model/onnx",
+      "kind": "model",
+      "size": 3126,
+      "url": "https://huggingface.co/Nimaone/pocket-tts-farsi-v2-onnx/resolve/main/manifest.json",
+      "desc": "راهنمای نسخهٔ مدل"
+    },
+    {
+      "name": "flow_lm_step.onnx",
+      "dir": "model/onnx",
+      "kind": "model",
+      "size": 850237,
+      "url": "https://huggingface.co/Nimaone/pocket-tts-farsi-v2-onnx/resolve/main/flow_lm_step.onnx",
+      "desc": "مدل زبان جریانی (گراف ONNX)"
+    },
+    {
+      "name": "flow_lm_step.onnx.data",
+      "dir": "model/onnx",
+      "kind": "model",
+      "size": 341311488,
+      "url": "https://huggingface.co/Nimaone/pocket-tts-farsi-v2-onnx/resolve/main/flow_lm_step.onnx.data",
+      "desc": "وزن‌های مدل زبان جریانی (بزرگ‌ترین پرونده)"
+    },
+    {
+      "name": "g2p_encoder.onnx",
+      "dir": "model/onnx",
+      "kind": "model",
+      "size": 13429334,
+      "url": "https://huggingface.co/Nimaone/pocket-tts-farsi-v2-onnx/resolve/main/g2p_encoder.onnx",
+      "desc": "رمزگذار دوزبانه G2P"
+    },
+    {
+      "name": "g2p_decoder.onnx",
+      "dir": "model/onnx",
+      "kind": "model",
+      "size": 436473,
+      "url": "https://huggingface.co/Nimaone/pocket-tts-farsi-v2-onnx/resolve/main/g2p_decoder.onnx",
+      "desc": "رمزگشای G2P (گراف ONNX)"
+    },
+    {
+      "name": "g2p_decoder.onnx.data",
+      "dir": "model/onnx",
+      "kind": "model",
+      "size": 20462336,
+      "url": "https://huggingface.co/Nimaone/pocket-tts-farsi-v2-onnx/resolve/main/g2p_decoder.onnx.data",
+      "desc": "وزن‌های رمزگشای G2P"
+    },
+    {
+      "name": "mimi_encoder.onnx",
+      "dir": "model/onnx",
+      "kind": "model",
+      "size": 401224,
+      "url": "https://huggingface.co/Nimaone/pocket-tts-farsi-v2-onnx/resolve/main/mimi_encoder.onnx",
+      "desc": "رمزگذار صوتی Mimi (گراف ONNX)"
+    },
+    {
+      "name": "mimi_encoder.onnx.data",
+      "dir": "model/onnx",
+      "kind": "model",
+      "size": 39059456,
+      "url": "https://huggingface.co/Nimaone/pocket-tts-farsi-v2-onnx/resolve/main/mimi_encoder.onnx.data",
+      "desc": "وزن‌های رمزگذار Mimi"
+    },
+    {
+      "name": "mimi_decoder_step_kv.onnx",
+      "dir": "model/onnx",
+      "kind": "model",
+      "size": 637846,
+      "url": "https://huggingface.co/Nimaone/pocket-tts-farsi-v2-onnx/resolve/main/mimi_decoder_step_kv.onnx",
+      "desc": "رمزگشای Mimi با KV-cache (گراف ONNX)"
+    },
+    {
+      "name": "mimi_decoder_step_kv.onnx.data",
+      "dir": "model/onnx",
+      "kind": "model",
+      "size": 41222144,
+      "url": "https://huggingface.co/Nimaone/pocket-tts-farsi-v2-onnx/resolve/main/mimi_decoder_step_kv.onnx.data",
+      "desc": "وزن‌های رمزگشای Mimi"
+    },
+    {
+      "name": "weights.npz",
+      "dir": "model/onnx",
+      "kind": "model",
+      "size": 16524808,
+      "url": "https://huggingface.co/Nimaone/pocket-tts-farsi-v2-onnx/resolve/main/weights.npz",
+      "desc": "وزن‌های جانبی (LUT، پروجکشن بلندگو)"
+    },
+    {
+      "name": "decode_state_init.npz",
+      "dir": "model/onnx",
+      "kind": "model",
+      "size": 16843958,
+      "url": "https://huggingface.co/Nimaone/pocket-tts-farsi-v2-onnx/resolve/main/decode_state_init.npz",
+      "desc": "حالت اولیهٔ رمزگشای"
+    },
+    {
+      "name": "tokenizer_ph.model",
+      "dir": "model/v2",
+      "kind": "model",
+      "size": 301825,
+      "url": "https://huggingface.co/mehdi-hf/pocket-tts-farsi-v2/resolve/main/tokenizer_ph.model",
+      "desc": "توکن‌ساز آوانگاشت (SentencePiece)"
+    },
+    {
+      "name": "normalize_fa.py",
+      "dir": "model/v2",
+      "kind": "model",
+      "size": 14437,
+      "url": "https://huggingface.co/mehdi-hf/pocket-tts-farsi-v2/resolve/main/normalize_fa.py",
+      "desc": "نرمال‌ساز متن فارسی"
+    },
+    {
+      "name": "prompt_hello.wav",
+      "dir": "voices",
+      "kind": "voice",
+      "size": 206286,
+      "url": "https://huggingface.co/mehdi-hf/pocket-tts-farsi-v2/resolve/main/samples/prompt_hello.wav",
+      "desc": "صدای مرجع نمونه (سلام)"
+    },
+    {
+      "name": "prompt_short_sentence.wav",
+      "dir": "voices",
+      "kind": "voice",
+      "size": 237390,
+      "url": "https://huggingface.co/mehdi-hf/pocket-tts-farsi-v2/resolve/main/samples/prompt_short_sentence.wav",
+      "desc": "صدای مرجع نمونه (جملهٔ کوتاه)"
+    },
+    {
+      "name": "prompt_news_paragraph.wav",
+      "dir": "voices",
+      "kind": "voice",
+      "size": 246606,
+      "url": "https://huggingface.co/mehdi-hf/pocket-tts-farsi-v2/resolve/main/samples/prompt_news_paragraph.wav",
+      "desc": "صدای مرجع نمونه (خبر)"
+    }
+  ]
+}

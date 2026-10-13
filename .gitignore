@@ -1,0 +1,21 @@
+build/
+build-win/
+deps/
+output/
+uploads/
+*.o
+*.obj
+*.wav
+!voices/*.wav
+__pycache__/
+
+# Model package (download from HuggingFace; see README)
+model/onnx/*.onnx
+model/onnx/*.data
+model/onnx/*.npz
+
+# Release packaging (made by howto.md step 4 — never commit)
+dist/
+*.log
+*.part
+.DS_Store

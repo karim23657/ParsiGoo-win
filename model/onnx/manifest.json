@@ -1,0 +1,85 @@
+{
+  "name": "pocket-tts-farsi-v2 ONNX (unified)",
+  "source": "mehdi-hf/pocket-tts-farsi-v2",
+  "graphs": {
+    "flow_lm_step.onnx": {
+      "role": "one step of the flow LM (voice conditioning / text prompt / generation)",
+      "inputs": {
+        "sequence": "f32 [1,S_seq,32] latent tokens (NaN=BOS); S_seq may be 0",
+        "text_emb": "f32 [1,S_text,1024] conditioning embeddings; S_text may be 0",
+        "offset": "i64 scalar — absolute write position / RoPE offset",
+        "noise": "f32 [1,32] flow noise (host RNG)",
+        "cache": "f32 [6,2,256,16,64] persistent KV cache (slot0=K, slot1=V)"
+      },
+      "outputs": {
+        "latent": "f32 [1,32] next latent (ignore for voice step)",
+        "eos": "f32 [1,1] 0/1 end-of-speech flag",
+        "new_kv": "f32 [6,2,S,16,64] K/V written THIS step; host scatters into cache[:,:,off:off+S]"
+      }
+    },
+    "mimi_encoder.onnx": {
+      "role": "voice prompt audio -> latents (one-shot, dynamic length)",
+      "inputs": {
+        "audio": "f32 [1,1,T] 24kHz mono"
+      },
+      "outputs": {
+        "latent": "f32 [1,T/1920,32]"
+      }
+    },
+    "mimi_decoder_step_kv.onnx": {
+      "role": "one latent -> 1920 audio samples (streaming, state I/O)",
+      "inputs": {
+        "latent": "f32 [1,1,32] un-normalized",
+        "s*": "27 state tensors (caches for 2 decoder-transformer layers + small conv states)"
+      },
+      "outputs": {
+        "audio": "f32 [1,1,1920]",
+        "s*o": "updated small states",
+        "kv0/kv1": "f32 [2,1,16,8,64] new K/V; host scatters at [.:,.,off:off+16]"
+      }
+    },
+    "g2p_encoder.onnx": {
+      "role": "T5 encoder of the G2P stage (Persian text -> hidden states)",
+      "inputs": {
+        "input_ids": "i64 [1,S] ByT5 ids (byte + 3)"
+      },
+      "outputs": {
+        "hidden": "f32 [1,S,512]"
+      }
+    },
+    "g2p_decoder.onnx": {
+      "role": "T5 decoder full-forward (stateless; greedy loop runs host-side)",
+      "inputs": {
+        "decoder_input_ids": "i64 [1,S]",
+        "encoder_hidden": "f32 [1,S_enc,512]"
+      },
+      "outputs": {
+        "logits": "f32 [1,S,384]"
+      }
+    }
+  },
+  "host_constants": "weights.npz: lut_weight [4000,1024], speaker_proj [1024,32], bos_before_voice [1,1,1024], emb_std/emb_mean [32]",
+  "decode_state_init": "decode_state_init.npz — initial tensors for the 27 decoder state inputs",
+  "constants": {
+    "ldim": 32,
+    "dim": 1024,
+    "layers": 6,
+    "heads": 16,
+    "dim_per_head": 64,
+    "cache_capacity": 384,
+    "sample_rate": 24000,
+    "mimi_steps_per_latent": 16,
+    "temp": 0.3,
+    "eos_threshold": -4.0,
+    "tokens_per_second_estimate": 3.0,
+    "gen_seconds_padding": 2.0,
+    "frame_rate": 12.5
+  },
+  "engine": "scripts/tts_onnx.py",
+  "notes": [
+    "the WHOLE pipeline (G2P + synthesis) runs WITHOUT torch",
+    "G2P tokenizer is ByT5: token id = utf-8 byte + 3 (pure python)",
+    "G2P decoding is greedy; verified identical to torch beam-5 on 12 sentences",
+    "max cache 256 positions (~voice 5s + 18-token chunk + ~12s audio)"
+  ]
+}

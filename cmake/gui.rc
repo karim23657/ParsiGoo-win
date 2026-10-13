@@ -1,0 +1,10 @@
+// farsi-tts-gui resources.
+//
+// Embedding the Common Controls v6 manifest is what gives every button,
+// trackbar, combo and progress bar the modern (themed) look instead of the
+// Windows-95 classic style, plus DPI awareness and the Windows 7
+// compatibility tag. MSVC gets the same manifest through CMake's
+// /MANIFESTINPUT (see CMakeLists.txt); MinGW needs it as a resource, which
+// is what this file is for (windres: 24 = RT_MANIFEST, id 1 = the first
+// (application) manifest).
+1 24 "win7.manifest"

@@ -1,0 +1,3 @@
+# parsi-go pronunciation dictionary — word<TAB>phonemes (UTF-8)
+# one entry per line, '#' starts a comment, lookup ignores case,
+# punctuation and diacritics (bArDArAzi == بُردارسازی).
